@@ -1,0 +1,239 @@
+// Dental appointment booking — PostgreSQL schema
+// https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- Auth (NextAuth / Auth.js compatible) ---
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @map("refresh_token") @db.Text
+  access_token      String? @map("access_token") @db.Text
+  expires_at        Int?    @map("expires_at")
+  token_type        String? @map("token_type")
+  scope             String?
+  id_token          String? @map("id_token") @db.Text
+  session_state     String? @map("session_state")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// --- Domain ---
+
+enum Role {
+  PATIENT
+  FRONT_DESK
+  SUPERVISOR
+  DOCTOR
+}
+
+enum Department {
+  GENERAL_DENTISTRY
+  ORTHODONTICS
+  PEDIATRICS
+  ORAL_SURGERY
+  ENDODONTICS
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum ReminderWindow {
+  SEVEN_DAYS
+  ONE_DAY
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime? @map("email_verified")
+  name          String?
+  image         String?
+  passwordHash  String?   @map("password_hash")
+  role          Role      @default(PATIENT)
+  department    Department?
+  phone         String?
+
+  accounts Account[]
+  sessions Session[]
+
+  familyMembers FamilyMember[]
+  insurances    Insurance[]
+
+  patientAppointments Appointment[] @relation("PatientUser")
+  dentistAppointments Appointment[] @relation("DentistUser")
+  staffCreatedAppointments Appointment[] @relation("CreatedByStaff")
+
+  chatParticipants ChatParticipant[]
+  sentChatMessages  ChatMessage[]   @relation("ChatMessageSender")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+// --- In-app chat (2-person threads) ---
+
+model ChatThread {
+  id        String   @id @default(cuid())
+  /// Stable id for a pair: sorted user ids joined with `|` (deduplicates DMs)
+  pairKey   String   @unique @map("pair_key")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  participants ChatParticipant[]
+  messages     ChatMessage[]
+
+  @@map("chat_threads")
+}
+
+model ChatParticipant {
+  threadId   String   @map("thread_id")
+  userId     String   @map("user_id")
+  lastReadAt DateTime? @map("last_read_at")
+
+  thread ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([threadId, userId])
+  @@index([userId])
+  @@map("chat_participants")
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  threadId  String   @map("thread_id")
+  senderId  String   @map("sender_id")
+  body      String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  thread ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender User       @relation("ChatMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt])
+  @@map("chat_messages")
+}
+
+model FamilyMember {
+  id           String    @id @default(cuid())
+  patientId    String    @map("patient_id")
+  firstName    String    @map("first_name")
+  lastName     String    @map("last_name")
+  dob          DateTime? @db.Date
+  relationship String?
+
+  patient      User           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([patientId])
+  @@map("family_members")
+}
+
+model Insurance {
+  id             String    @id @default(cuid())
+  patientId      String    @map("patient_id")
+  carrierName    String    @map("carrier_name")
+  planName       String?   @map("plan_name")
+  memberId       String    @map("member_id")
+  groupNumber    String?   @map("group_number")
+  subscriberName String?   @map("subscriber_name")
+  effectiveDate  DateTime? @map("effective_date") @db.Date
+  notes          String?   @db.Text
+
+  patient User @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([patientId])
+  @@map("insurances")
+}
+
+model Appointment {
+  id               String @id @default(cuid())
+  patientId        String @map("patient_id")
+  familyMemberId   String? @map("family_member_id")
+  dentistId        String @map("dentist_id")
+  createdByStaffId String? @map("created_by_staff_id")
+
+  startAt     DateTime @map("start_at")
+  endAt       DateTime? @map("end_at")
+  status      AppointmentStatus @default(SCHEDULED)
+  isEmergency Boolean @default(false) @map("is_emergency")
+  reason      String?
+  notes       String? @db.Text
+
+  patient      User @relation("PatientUser", fields: [patientId], references: [id], onDelete: Cascade)
+  familyMember FamilyMember? @relation(fields: [familyMemberId], references: [id], onDelete: SetNull)
+  dentist      User @relation("DentistUser", fields: [dentistId], references: [id], onDelete: Restrict)
+  createdBy    User? @relation("CreatedByStaff", fields: [createdByStaffId], references: [id], onDelete: SetNull)
+
+  reminders AppointmentReminder[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([startAt])
+  @@index([dentistId, startAt])
+  @@index([patientId, startAt])
+  @@index([status])
+  @@index([isEmergency])
+  @@map("appointments")
+}
+
+/// Rows used by the reminder job (simulate cron: T-7d and T-1d).
+model AppointmentReminder {
+  id            String         @id @default(cuid())
+  appointmentId String         @map("appointment_id")
+  window        ReminderWindow
+  fireAt        DateTime       @map("fire_at")
+  sentAt        DateTime?      @map("sent_at")
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@unique([appointmentId, window])
+  @@index([fireAt, sentAt])
+  @@map("appointment_reminders")
+}
