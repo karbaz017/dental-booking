@@ -36,3 +36,11 @@ This file serves as the directory map and technical reference for AI agents work
 
 ### Utility Scripts
 *   **`scripts/run-reminders.ts`**: CLI entrypoint to trigger reminders manually (`npm run reminders:run`).
+
+## Environment Configurations (`.env`)
+*   **`DATABASE_URL`**: PostgreSQL connection string. Defaults to a local docker/brew postgres instance.
+*   **`AUTH_SECRET`**: Secret string for session signatures. Generated in production using `openssl rand -base64 32`.
+*   **`STAFF_REGISTRATION_CODE`**: Required passphrase for registering new clinic staff at `/staff/register`. Registration is disabled if this is unset.
+*   **`CRON_SECRET`**: API token guarding the `/api/cron/reminders` endpoint in production. Checked in headers as a Bearer token.
+*   **`RESEND_API_KEY` & `RESEND_FROM_EMAIL`**: Required for transactional email delivery in production. In development, logs print to the terminal when these are omitted.
+
