@@ -1,0 +1,36 @@
+# Gemini Workspace Context
+
+This file serves as the directory map and technical reference for AI agents working in this repository.
+
+## Tech Stack
+*   **Framework**: Next.js 16 (App Router)
+*   **Language**: TypeScript
+*   **Database ORM**: Prisma v6.19.0 (PostgreSQL client)
+*   **Styling**: Tailwind CSS v4 + Vanilla CSS custom variables
+*   **Authentication**: Auth.js / NextAuth (v5 beta)
+*   **Email Deliverability**: Resend API Integration
+
+## Directory Structure & Code Map
+
+### Core Architecture
+*   **[prisma/schema.prisma](file:///Users/arbaz/Projects/dental-booking/prisma/schema.prisma)**: The PostgreSQL database schema definition. Contains tables for users/auth, family members, insurance profiles, appointments, appointment reminders, and in-app chat.
+*   **[src/auth.ts](file:///Users/arbaz/Projects/dental-booking/src/auth.ts)**: Configures NextAuth adapter and handlers.
+*   **[src/middleware.ts](file:///Users/arbaz/Projects/dental-booking/src/middleware.ts)**: Intercepts and guards routes based on user session roles.
+
+### Routing (`src/app/`)
+*   **`page.tsx`**: Public marketing page.
+*   **`register/`**: Patient registration.
+*   **`login/`**: Patient sign-in.
+*   **`staff/`**: Staff portals (logins, dashboard, scheduler).
+*   **`dashboard/`**: Patient dashboard for booking and family management.
+*   **`api/cron/reminders/`**: HTTP endpoint triggering simulated automated reminder checks.
+
+### Libraries & Business Logic (`src/lib/`)
+*   **`prisma.ts`**: Global Prisma client singleton.
+*   **`process-due-reminders.ts`**: Script/core logic querying upcoming appointment reminders (T-7d, T-1d) and processing them.
+*   **`reminder-delivery.ts`**: Interface for sending notifications (falls back to console log in development, sends email via Resend in production).
+*   **`chat-access.ts`**: Custom authorization and generation rules for direct messaging.
+*   **`require-patient.ts` & `require-staff.ts`**: Route protection helpers verifying active roles.
+
+### Utility Scripts
+*   **`scripts/run-reminders.ts`**: CLI entrypoint to trigger reminders manually (`npm run reminders:run`).
