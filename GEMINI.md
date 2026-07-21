@@ -27,10 +27,12 @@ This file serves as the directory map and technical reference for AI agents work
 
 ### Libraries & Business Logic (`src/lib/`)
 *   **`prisma.ts`**: Global Prisma client singleton.
+*   **`require-patient.ts` & `require-staff.ts`**: Route protection helpers verifying active roles. `requireStaff()` redirects if the staff member does not have an assigned department.
+*   **`chat-access.ts`**: Custom authorization rules for direct messaging. resticts DMs to Patients <-> Front Desk and Staff <-> Staff only. Includes lexicographical `makePairKey` logic.
+*   **`appointment-scheduling.ts`**: Configures default slot intervals (45 mins) and functions to build reminder dates.
 *   **`process-due-reminders.ts`**: Script/core logic querying upcoming appointment reminders (T-7d, T-1d) and processing them.
 *   **`reminder-delivery.ts`**: Interface for sending notifications (falls back to console log in development, sends email via Resend in production).
-*   **`chat-access.ts`**: Custom authorization and generation rules for direct messaging.
-*   **`require-patient.ts` & `require-staff.ts`**: Route protection helpers verifying active roles.
+*   **`reminder-email-templates.ts`**: Text copy templates for reminder emails.
 
 ### Utility Scripts
 *   **`scripts/run-reminders.ts`**: CLI entrypoint to trigger reminders manually (`npm run reminders:run`).
