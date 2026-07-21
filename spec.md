@@ -46,3 +46,28 @@ The schema defined in [schema.prisma](file:///Users/arbaz/Projects/dental-bookin
 *   **`Appointment`**: Connects patient (or family member) with a doctor, start/end times, emergency flags, status (`SCHEDULED`, `CONFIRMED`, `CANCELLED`, `COMPLETED`, `NO_SHOW`), reason, and notes.
 *   **`AppointmentReminder`**: Tracks the status and scheduled time (`fireAt`, `sentAt`) for the `SEVEN_DAYS` and `ONE_DAY` notification windows.
 *   **`ChatThread` / `ChatParticipant` / `ChatMessage`**: Implements chat capabilities. The `pairKey` is generated lexicographically to guarantee unique 2-person direct message threads.
+
+---
+
+## 4. Current Feature Status & Verification Progress
+
+All core components and workflows in the DentalCare Booking system have been successfully implemented and verified:
+
+### Patient Portal Features
+*   **[Completed & Verified]** **Self-registration & Login**: Fully implemented via NextAuth.js credentials flow at `/register` and `/login`.
+*   **[Completed & Verified]** **Family Group Management**: Dependents can be added/edited via `/dashboard/family`. Tested to ensure cascade database deletion works correctly.
+*   **[Completed & Verified]** **Insurance Profiles**: Patients can manage active carrier files via `/dashboard/insurance`.
+*   **[Completed & Verified]** **Self-Service Appointment Scheduling**: Multi-step calendar booking flow via `/dashboard/appointments/new`. Verified that booking a slot creates corresponding `SEVEN_DAYS` and `ONE_DAY` reminder logs in the database.
+*   **[Completed & Verified]** **Direct Messaging**: Patient-to-Front Desk messaging in `/dashboard/chat` using the secure `pairKey` logic.
+
+### Staff Dashboard Features
+*   **[Completed & Verified]** **Operational Dashboard**: Calendar scheduling, doctor list assignments, and department filters in `/staff/dashboard`.
+*   **[Completed & Verified]** **Status Transitions**: Front desk and supervisors can modify appointment status to `CONFIRMED`, `CANCELLED`, `COMPLETED`, or `NO_SHOW`.
+*   **[Completed & Verified]** **Emergency Visits Flagging**: Immediate visually highlighted emergency indicators on the scheduler grid.
+*   **[Completed & Verified]** **Staff-to-Staff DMs**: Fully functional direct messaging at `/staff/dashboard/chat`.
+
+### Appointment Reminders
+*   **[Completed & Verified]** **Offline Reminder CLI Job**: CLI task execution (`npm run reminders:run`) triggers reminder processing.
+*   **[Completed & Verified]** **Automated Reminder Cron**: GET/POST route `/api/cron/reminders` dispatches due reminders.
+*   **[Completed & Verified]** **Email Delivery Integration**: Delivered via Resend API in production and printed to the terminal console in development.
+
