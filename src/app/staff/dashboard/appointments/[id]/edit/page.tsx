@@ -15,7 +15,7 @@ export default async function StaffEditAppointmentPage({ params }: Props) {
     prisma.appointment.findFirst({
       where: { id, dentist: { department } },
       include: {
-        patient: { select: { email: true } },
+        patient: { select: { id: true, name: true, email: true, chartNumber: true, phone: true } },
       },
     }),
     prisma.user.findMany({
@@ -43,7 +43,8 @@ export default async function StaffEditAppointmentPage({ params }: Props) {
           familyMembers={familyMembers}
           initial={{
             id: appointment.id,
-            patientEmail: appointment.patient.email,
+            patientSearch: appointment.patient.chartNumber || appointment.patient.name || appointment.patient.email,
+            patient: appointment.patient,
             dentistId: appointment.dentistId,
             familyMemberId: appointment.familyMemberId,
             startAtLocal: formatForDatetimeLocalInput(appointment.startAt),
