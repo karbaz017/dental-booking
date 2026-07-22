@@ -16,9 +16,7 @@ export async function createStaffAppointment(
 ): Promise<StaffApptState> {
   const { userId: staffId, department } = await requireStaff();
 
-  const patientEmail = String(formData.get("patientEmail") ?? "")
-    .toLowerCase()
-    .trim();
+  const patientSearch = String(formData.get("patientSearch") ?? "").trim();
   const dentistId = String(formData.get("dentistId") ?? "").trim();
   const startRaw = String(formData.get("startAt") ?? "").trim();
   const familyMemberIdRaw = String(formData.get("familyMemberId") ?? "").trim();
@@ -27,15 +25,39 @@ export async function createStaffAppointment(
   const reason = String(formData.get("reason") ?? "").trim() || null;
   const notes = String(formData.get("notes") ?? "").trim() || null;
 
-  if (!patientEmail || !dentistId || !startRaw) {
-    return { error: "Patient email, dentist, and date/time are required." };
+  if (!patientSearch || !dentistId || !startRaw) {
+    return { error: "Patient name or chart number, dentist, and date/time are required." };
   }
 
-  const patient = await prisma.user.findFirst({
-    where: { email: patientEmail, role: Role.PATIENT },
+  let patient = await prisma.user.findFirst({
+    where: {
+      role: Role.PATIENT,
+      OR: [
+        { chartNumber: patientSearch },
+        { email: patientSearch.toLowerCase() },
+        { name: patientSearch },
+      ],
+    },
   });
+
   if (!patient) {
-    return { error: "No patient account found for that email." };
+    const patients = await prisma.user.findMany({
+      where: { role: Role.PATIENT },
+    });
+    const matches = patients.filter(
+      (p) =>
+        p.name?.toLowerCase() === patientSearch.toLowerCase() ||
+        p.name?.toLowerCase().includes(patientSearch.toLowerCase())
+    );
+    if (matches.length === 1) {
+      patient = matches[0];
+    } else if (matches.length > 1) {
+      return { error: `Multiple patients found matching "${patientSearch}". Please use their unique chart number.` };
+    }
+  }
+
+  if (!patient) {
+    return { error: "No patient account found for that name or chart number." };
   }
 
   const dentist = await prisma.user.findFirst({
@@ -92,9 +114,7 @@ export async function updateStaffAppointment(
   const id = String(formData.get("id") ?? "").trim();
   if (!id) return { error: "Missing appointment." };
 
-  const patientEmail = String(formData.get("patientEmail") ?? "")
-    .toLowerCase()
-    .trim();
+  const patientSearch = String(formData.get("patientSearch") ?? "").trim();
   const dentistId = String(formData.get("dentistId") ?? "").trim();
   const startRaw = String(formData.get("startAt") ?? "").trim();
   const familyMemberIdRaw = String(formData.get("familyMemberId") ?? "").trim();
@@ -104,15 +124,39 @@ export async function updateStaffAppointment(
   const reason = String(formData.get("reason") ?? "").trim() || null;
   const notes = String(formData.get("notes") ?? "").trim() || null;
 
-  if (!patientEmail || !dentistId || !startRaw) {
-    return { error: "Patient email, dentist, and date/time are required." };
+  if (!patientSearch || !dentistId || !startRaw) {
+    return { error: "Patient name or chart number, dentist, and date/time are required." };
   }
 
-  const patient = await prisma.user.findFirst({
-    where: { email: patientEmail, role: Role.PATIENT },
+  let patient = await prisma.user.findFirst({
+    where: {
+      role: Role.PATIENT,
+      OR: [
+        { chartNumber: patientSearch },
+        { email: patientSearch.toLowerCase() },
+        { name: patientSearch },
+      ],
+    },
   });
+
   if (!patient) {
-    return { error: "No patient account found for that email." };
+    const patients = await prisma.user.findMany({
+      where: { role: Role.PATIENT },
+    });
+    const matches = patients.filter(
+      (p) =>
+        p.name?.toLowerCase() === patientSearch.toLowerCase() ||
+        p.name?.toLowerCase().includes(patientSearch.toLowerCase())
+    );
+    if (matches.length === 1) {
+      patient = matches[0];
+    } else if (matches.length > 1) {
+      return { error: `Multiple patients found matching "${patientSearch}". Please use their unique chart number.` };
+    }
+  }
+
+  if (!patient) {
+    return { error: "No patient account found for that name or chart number." };
   }
 
   const dentist = await prisma.user.findFirst({

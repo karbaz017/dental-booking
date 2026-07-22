@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -18,12 +18,12 @@ model Account {
   type              String
   provider          String
   providerAccountId String  @map("provider_account_id")
-  refresh_token     String? @map("refresh_token") @db.Text
-  access_token      String? @map("access_token") @db.Text
+  refresh_token     String? @map("refresh_token")
+  access_token      String? @map("access_token")
   expires_at        Int?    @map("expires_at")
   token_type        String? @map("token_type")
   scope             String?
-  id_token          String? @map("id_token") @db.Text
+  id_token          String? @map("id_token")
   session_state     String? @map("session_state")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -86,6 +86,7 @@ model User {
   email         String    @unique
   emailVerified DateTime? @map("email_verified")
   name          String?
+  chartNumber   String?   @unique @map("chart_number")
   image         String?
   passwordHash  String?   @map("password_hash")
   role          Role      @default(PATIENT)
@@ -104,6 +105,11 @@ model User {
 
   chatParticipants ChatParticipant[]
   sentChatMessages  ChatMessage[]   @relation("ChatMessageSender")
+
+  clinicalNotes        ClinicalNote[] @relation("PatientNotes")
+  writtenClinicalNotes ClinicalNote[] @relation("AuthorNotes")
+  perioCharts          PerioChart[]   @relation("PatientPerioCharts")
+  writtenPerioCharts   PerioChart[]   @relation("AuthorPerioCharts")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -143,7 +149,7 @@ model ChatMessage {
   id        String   @id @default(cuid())
   threadId  String   @map("thread_id")
   senderId  String   @map("sender_id")
-  body      String   @db.Text
+  body      String
   createdAt DateTime @default(now()) @map("created_at")
 
   thread ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
@@ -158,7 +164,7 @@ model FamilyMember {
   patientId    String    @map("patient_id")
   firstName    String    @map("first_name")
   lastName     String    @map("last_name")
-  dob          DateTime? @db.Date
+  dob          DateTime?
   relationship String?
 
   patient      User           @relation(fields: [patientId], references: [id], onDelete: Cascade)
@@ -179,8 +185,8 @@ model Insurance {
   memberId       String    @map("member_id")
   groupNumber    String?   @map("group_number")
   subscriberName String?   @map("subscriber_name")
-  effectiveDate  DateTime? @map("effective_date") @db.Date
-  notes          String?   @db.Text
+  effectiveDate  DateTime? @map("effective_date")
+  notes          String?
 
   patient User @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
@@ -203,7 +209,7 @@ model Appointment {
   status      AppointmentStatus @default(SCHEDULED)
   isEmergency Boolean @default(false) @map("is_emergency")
   reason      String?
-  notes       String? @db.Text
+  notes       String?
 
   patient      User @relation("PatientUser", fields: [patientId], references: [id], onDelete: Cascade)
   familyMember FamilyMember? @relation(fields: [familyMemberId], references: [id], onDelete: SetNull)
@@ -236,4 +242,32 @@ model AppointmentReminder {
   @@unique([appointmentId, window])
   @@index([fireAt, sentAt])
   @@map("appointment_reminders")
+}
+
+model ClinicalNote {
+  id         String   @id @default(cuid())
+  patientId  String   @map("patient_id")
+  authorId   String   @map("author_id")
+  content    String
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  patient    User     @relation("PatientNotes", fields: [patientId], references: [id], onDelete: Cascade)
+  author     User     @relation("AuthorNotes", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@map("clinical_notes")
+}
+
+model PerioChart {
+  id         String   @id @default(cuid())
+  patientId  String   @map("patient_id")
+  authorId   String   @map("author_id")
+  data       String   // Stringified JSON containing all 32 teeth measurements
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  patient    User     @relation("PatientPerioCharts", fields: [patientId], references: [id], onDelete: Cascade)
+  author     User     @relation("AuthorPerioCharts", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@map("perio_charts")
 }

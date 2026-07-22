@@ -5,7 +5,7 @@ import { ReminderSimulator } from "@/components/staff/reminder-simulator";
 import { parseLocalDayBounds } from "@/lib/day-bounds";
 import { prisma } from "@/lib/prisma";
 import { requireStaff } from "@/lib/require-staff";
-import { cancelStaffAppointment } from "./appointments/actions";
+import { CancelAppointmentButton } from "@/components/staff/cancel-appointment-button";
 
 function formatWhen(d: Date) {
   return d.toLocaleString(undefined, {
@@ -56,7 +56,7 @@ export default async function StaffDashboardPage({ searchParams }: StaffDashboar
       where,
       orderBy: [{ startAt: "asc" }, { id: "asc" }],
       include: {
-        patient: { select: { name: true, email: true } },
+        patient: { select: { id: true, name: true, email: true, chartNumber: true } },
         familyMember: true,
         dentist: { select: { name: true, email: true } },
       },
@@ -192,7 +192,9 @@ export default async function StaffDashboardPage({ searchParams }: StaffDashboar
                     <div className="max-w-[14rem] truncate font-medium">
                       {a.patient.name?.trim() || a.patient.email}
                     </div>
-                    <div className="truncate text-xs text-slate-500">{a.patient.email}</div>
+                    <div className="truncate text-xs text-slate-500">
+                      {a.patient.chartNumber ? `Chart: #${a.patient.chartNumber}` : a.patient.email}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-slate-700">
                     {a.familyMember
@@ -210,21 +212,19 @@ export default async function StaffDashboardPage({ searchParams }: StaffDashboar
                   <td className="whitespace-nowrap px-4 py-3 text-right">
                     <div className="flex justify-end gap-2">
                       <Link
+                        href={`/staff/dashboard/patients/${a.patient.id}`}
+                        className="rounded-lg border border-teal-300 bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-800 transition hover:bg-teal-100"
+                      >
+                        Chart
+                      </Link>
+                      <Link
                         href={`/staff/dashboard/appointments/${a.id}/edit`}
                         className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 transition hover:bg-slate-50"
                       >
                         Edit
                       </Link>
                       {a.status !== "CANCELLED" ? (
-                        <form action={cancelStaffAppointment} className="inline">
-                          <input type="hidden" name="id" value={a.id} />
-                          <button
-                            type="submit"
-                            className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-800 transition hover:bg-red-100"
-                          >
-                            Cancel
-                          </button>
-                        </form>
+                        <CancelAppointmentButton id={a.id} />
                       ) : null}
                     </div>
                   </td>
